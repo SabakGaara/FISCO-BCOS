@@ -21,6 +21,7 @@
 #include "BlockVerifier.h"
 #include "ExecutiveContext.h"
 #include "TxDAG.h"
+#include "TxDAG_V.h"
 #include "libstorage/StorageException.h"
 #include <libethcore/Exceptions.h>
 #include <libethcore/PrecompiledContract.h>
@@ -30,6 +31,24 @@
 #include <tbb/parallel_for.h>
 #include <exception>
 #include <thread>
+#include <time.h>
+#include <ctime>
+#include <sys/time.h>
+#include <unistd.h>
+#include <vector>
+#include <iomanip>
+
+
+//DAG_V* forDAG::lockDAG;
+
+forDAG forDagCase_2;
+
+DAG_V* forDagCase_3 = &(forDagCase_2.lockDAG);
+
+//tbb::concurrent_vector<uint32_t> TBBMUTEX::tempEntries;
+
+
+//tbb::concurrent_vector<uint32_t> ID_vector = tbb::concurrent_vector<uint32_t>();
 
 using namespace dev;
 using namespace std;
@@ -37,6 +56,9 @@ using namespace dev::eth;
 using namespace dev::blockverifier;
 using namespace dev::executive;
 using namespace dev::storage;
+
+double delta_t_1 = 0;
+timeval t_start, t_end;
 
 ExecutiveContext::Ptr BlockVerifier::executeBlock(Block& block, BlockInfo const& parentBlockInfo)
 {
@@ -132,7 +154,7 @@ ExecutiveContext::Ptr BlockVerifier::serialExecuteBlock(
             auto& tx = (*block.transactions())[i];
 
             TransactionReceipt::Ptr resultReceipt =
-                execute(tx, OnOpFunc(), executiveContext, executive);
+                execute(tx, OnOpFunc(), executiveContext, executive, 0);
             block.setTransactionReceipt(i, resultReceipt);
             executiveContext->getState()->commit();
         }
@@ -206,9 +228,7 @@ ExecutiveContext::Ptr BlockVerifier::serialExecuteBlock(
 }
 
 ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
-    Block& block, BlockInfo const& parentBlockInfo)
-
-{
+    Block& block, BlockInfo const& parentBlockInfo) {
     BLOCKVERIFIER_LOG(INFO) << LOG_DESC("[executeBlock]Executing block")
                             << LOG_KV("txNum", block.transactions()->size())
                             << LOG_KV("num", block.blockHeader().number())
@@ -219,18 +239,16 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
     auto start_time = utcTime();
     auto record_time = utcTime();
     ExecutiveContext::Ptr executiveContext = std::make_shared<ExecutiveContext>();
-    try
-    {
+    try {
         m_executiveContextFactory->initExecutiveContext(
-            parentBlockInfo, parentBlockInfo.stateRoot, executiveContext);
+                parentBlockInfo, parentBlockInfo.stateRoot, executiveContext);
     }
-    catch (exception& e)
-    {
+    catch (exception &e) {
         BLOCKVERIFIER_LOG(ERROR) << LOG_DESC("[executeBlock] Error during initExecutiveContext")
                                  << LOG_KV("EINFO", boost::diagnostic_information(e));
 
         BOOST_THROW_EXCEPTION(InvalidBlockWithBadStateOrReceipt()
-                              << errinfo_comment("Error during initExecutiveContext"));
+                                      << errinfo_comment("Error during initExecutiveContext"));
     }
 
     auto memoryTableFactory = executiveContext->getMemoryTableFactory();
@@ -243,19 +261,41 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
     block.resizeTransactionReceipt(block.transactions()->size());
     auto perpareBlock_time_cost = utcTime() - record_time;
     record_time = utcTime();
+    if (tmpHeader.receiptsRoot() != h256() && tmpHeader.stateRoot() != h256()) {
+        std::cout<< "for verify" << std::endl;
+        shared_ptr<TxDAG_V> txDag_V = make_shared<TxDAG_V>();
+        txDag_V->init(executiveContext, block.transactions(), block.blockHeader().number());
+        forDAG::lockDAG.init(txDag_V->m_dag.m_totalVtxs);
+        forDAG::lockDAG.m_vtxs = txDag_V->m_dag.m_vtxs;
+        forDAG::lockDAG.generate();
+        forDAG::lockDAG.m_totalConsume = txDag_V.m_dag.m_totalConsume;
+        std::cout << "finish" << std::endl;
+    } else
+    {
+        std::cout<< "for miner" << std::endl;
+        std::cout<< "aaaa" << forDAG::lockDAG.m_totalVtxs << std::endl;
+    }
 
     shared_ptr<TxDAG> txDag = make_shared<TxDAG>();
-    txDag->init(executiveContext, block.transactions(), block.blockHeader().number());
 
+    if (tmpHeader.receiptsRoot() != h256() && tmpHeader.stateRoot() != h256())
+    {
+        txDag->verifyInit(executiveContext, block.transactions(), block.blockHeader().number());
+    }
+    else
+    {
+        std::cout<< "for miner 1" << std::endl;
+	txDag->init(executiveContext, block.transactions(), block.blockHeader().number());
+    }
 
     txDag->setTxExecuteFunc([&](Transaction::Ptr _tr, ID _txId, Executive::Ptr _executive) {
 
 
 #if 0
         std::pair<ExecutionResult, TransactionReceipt::Ptr> resultReceipt =
-            execute(envInfo, _tr, OnOpFunc(), executiveContext);
+            execute(envInfo, _tr, OnOpFunc(), executiveContext, _txID);
 #endif
-        auto resultReceipt = execute(_tr, OnOpFunc(), executiveContext, _executive);
+        auto resultReceipt = execute(_tr, OnOpFunc(), executiveContext, _executive, _txId);
 
         block.setTransactionReceipt(_txId, resultReceipt);
         executiveContext->getState()->commit();
@@ -265,7 +305,10 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
     record_time = utcTime();
 
     auto parallelTimeOut = utcTime() + 30000;  // 30 timeout
-
+    for (auto tx : *block.transactions())
+        cout << "tx_detail" << tx << endl;
+    cout << "tx_number" << block.transactions()->size() << endl;
+    gettimeofday( &t_start, NULL);
     try
     {
         tbb::atomic<bool> isWarnedTimeout(false);
@@ -277,7 +320,7 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
                 Executive::Ptr executive = std::make_shared<Executive>();
                 executive->setEnvInfo(envInfo);
                 executive->setState(executiveContext->getState());
-
+//                std::cout << "my test for para " << "para executing............."<< std::endl;
                 while (!txDag->hasFinished())
                 {
                     if (!isWarnedTimeout.load() && utcTime() >= parallelTimeOut)
@@ -288,7 +331,7 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
                             << LOG_KV("txNum", block.transactions()->size())
                             << LOG_KV("blockNumber", block.blockHeader().number());
                     }
-
+//                    cout << "my test for para " << "para executing..." << block.transactions()->size() << std::endl;
                     txDag->executeUnit(executive);
                 }
             });
@@ -307,8 +350,58 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
     {
         return nullptr;
     }
+    
+    gettimeofday( &t_end, NULL);
+    double delta_t = (t_end.tv_sec-t_start.tv_sec) + (t_end.tv_usec-t_start.tv_usec)/1000000.0;
+    cout<<setiosflags(ios::fixed)<<setprecision(7)<<delta_t<<endl;    
     auto exe_time_cost = utcTime() - record_time;
     record_time = utcTime();
+    cout << "execution time cost:" << exe_time_cost << endl;
+    if (false && ( tmpHeader.receiptsRoot() == h256() || tmpHeader.stateRoot() == h256() ))
+    {
+        vector<ID> temp;
+        auto temp_1 = TBBMUTEX::tempEntries;
+        auto temp_2 = txDag->TxSequence;
+
+        for (int i = 0;i < temp_1.size();i++)
+        {
+            std::cout<< "tempEntries" << temp_1[i] << std::endl;
+           temp.push_back(temp_1[i]);
+        }
+
+        for (int i = 0;i < temp_2.size();i++)
+        {
+            std::cout<< "TxSequence" << temp_2[i] << std::endl;
+            temp.push_back(temp_2[i]);
+        }
+
+        std::cout << "temp contain all"<< std::endl;
+        vector<ID>::iterator it,it1;
+        for (it=++temp.begin(); it != temp.end();)
+        {
+            it1 = find(temp.begin(),it,*it);
+            if(it1 != it)
+                it=temp.erase(it);
+            else
+                it++;
+        }
+        std::cout << "temp record"<< std::endl;
+        std::shared_ptr<Transactions> temp_transactions =  std::make_shared<Transactions>();
+        std::shared_ptr<TransactionReceipts> temp_transactionReceipts = std::make_shared<TransactionReceipts>();
+        std::cout << "temp.size()" << temp.size() << std::endl;
+
+        for(int i = 0;i < temp.size();i++)
+        {
+            int m = (int)temp[i];
+            temp_transactions->push_back(block.transaction(m));
+            temp_transactionReceipts->push_back(block.transactionReceipt(m));
+        }
+        std::cout << "reassgin"<< std::endl;
+        block.setTransactions(temp_transactions);
+        block.setTransactionReceipts(temp_transactionReceipts);
+        std::cout << "setfinish"<< std::endl;
+    }
+
 
     h256 stateRoot = executiveContext->getState()->rootHash();
     auto getRootHash_time_cost = utcTime() - record_time;
@@ -328,7 +421,7 @@ ExecutiveContext::Ptr BlockVerifier::parallelExecuteBlock(
     block.header().setDBhash(executiveContext->getMemoryTableFactory()->hash());
     auto setStateRoot_time_cost = utcTime() - record_time;
     record_time = utcTime();
-
+    // 做验证
     if (tmpHeader.receiptsRoot() != h256() && tmpHeader.stateRoot() != h256())
     {
         if (tmpHeader != block.blockHeader())
@@ -394,13 +487,14 @@ TransactionReceipt::Ptr BlockVerifier::executeTransaction(
     executive->setEnvInfo(envInfo);
     executive->setState(executiveContext->getState());
     // only Rpc::call will use executeTransaction, RPC do catch exception
-    return execute(_t, OnOpFunc(), executiveContext, executive);
+    // set 0 for api check
+    return execute(_t, OnOpFunc(), executiveContext, executive, 0);
 }
 
-
+// This function never be executed
 #if 0
 std::pair<ExecutionResult, TransactionReceipt::Ptr> BlockVerifier::execute(EnvInfo const& _envInfo,
-    Transaction const& _t, OnOpFunc const& _onOp, ExecutiveContext::Ptr executiveContext)
+    Transaction const& _t, OnOpFunc const& _onOp, ExecutiveContext::Ptr executiveContext, )
 {
     auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -417,7 +511,7 @@ std::pair<ExecutionResult, TransactionReceipt::Ptr> BlockVerifier::execute(EnvIn
     // OK - transaction looks valid - execute.
     try
     {
-        e.initialize(_t);
+        e.initialize(_t, _txID);
         if (!e.execute())
             e.go(onOp);
         e.finalize();
@@ -448,7 +542,7 @@ std::pair<ExecutionResult, TransactionReceipt::Ptr> BlockVerifier::execute(EnvIn
 
 dev::eth::TransactionReceipt::Ptr BlockVerifier::execute(dev::eth::Transaction::Ptr _t,
     dev::eth::OnOpFunc const& _onOp, dev::blockverifier::ExecutiveContext::Ptr executiveContext,
-    Executive::Ptr executive)
+    Executive::Ptr executive, uint32_t _txID)
 {
     auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -463,7 +557,7 @@ dev::eth::TransactionReceipt::Ptr BlockVerifier::execute(dev::eth::Transaction::
     // OK - transaction looks valid - execute.
     try
     {
-        executive->initialize(_t);
+        executive->initialize(_t, _txID);
         if (!executive->execute())
             executive->go(onOp);
         executive->finalize();

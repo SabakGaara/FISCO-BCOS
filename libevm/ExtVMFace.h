@@ -101,6 +101,7 @@ struct CallParameters
     Address receiveAddress;  /// address of the transaction receiver
     u256 valueTransfer;      /// transferred wei between the sender and receiver
     u256 apparentValue;
+    uint32_t m_ID;
     u256 gas;
     bytesConstRef data;       /// transaction data
     bool staticCall = false;  /// only true when the transaction is a message call
@@ -199,7 +200,7 @@ public:
     /// Full constructor.
     ExtVMFace(EnvInfo const& _envInfo, Address const& _myAddress, Address const& _caller,
         Address const& _origin, u256 const& _value, u256 const& _gasPrice, bytesConstRef _data,
-        bytes _code, h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall);
+        bytes _code, h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall, uint32_t _txID);
 
     virtual ~ExtVMFace() = default;
 
@@ -254,6 +255,7 @@ public:
     virtual EVMSchedule const& evmSchedule() const { return g_BCOSConfig.evmSchedule(); }
 
 public:
+    uint32_t m_ID;
     /// ------ get interfaces related to ExtVMFace------
     Address const& myAddress() { return m_myAddress; }
     Address const& caller() { return m_caller; }
@@ -283,6 +285,7 @@ public:
     void setCreate(bool _isCreate) { m_isCreate = _isCreate; }
     void setStaticCall(bool _staticCall) { m_staticCall = _staticCall; }
 
+
 protected:
     EnvInfo const& m_envInfo;
 
@@ -301,6 +304,7 @@ private:
     unsigned m_depth = 0;       ///< Depth of the present call.
     bool m_isCreate = false;    ///< Is this a CREATE call?
     bool m_staticCall = false;  ///< Throw on state changing.
+
 };
 
 /**

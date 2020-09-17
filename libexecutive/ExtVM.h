@@ -48,9 +48,9 @@ public:
     ExtVM(std::shared_ptr<StateFace> _s, dev::eth::EnvInfo const& _envInfo,
         Address const& _myAddress, Address const& _caller, Address const& _origin,
         u256 const& _value, u256 const& _gasPrice, bytesConstRef _data, bytesConstRef _code,
-        h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall)
+        h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall, uint32_t _txID)
       : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(),
-            _codeHash, _depth, _isCreate, _staticCall),
+            _codeHash, _depth, _isCreate, _staticCall, _txID),
         m_s(_s)
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM
@@ -106,6 +106,7 @@ public:
 
 private:
     std::shared_ptr<StateFace> m_s;  ///< A reference to the base state.
+
 };
 
 }  // namespace executive

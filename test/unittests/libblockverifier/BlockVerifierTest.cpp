@@ -236,14 +236,14 @@ BOOST_FIXTURE_TEST_SUITE(BlockVerifierTest, BlockVerifierFixture)
 BOOST_AUTO_TEST_CASE(executeBlockTest)
 {
     FakeVerifierWithDagTransfer serialExe;
-    auto serialState = serialExe.executeVerifier(4, 20, "LevelDB", false);
+    auto serialState = serialExe.executeVerifier(100, 2000, "LevelDB", false);
     cout << "Serial exec root: " << serialState << endl;
 
 
     FakeVerifierWithDagTransfer paraExe;
-    auto paraState = paraExe.executeVerifier(4, 20, "LevelDB", true);
-    cout << "Para exec root: " << paraExe.executeVerifier(4, 20, "LevelDB", true) << endl;
-
+    auto paraState = paraExe.executeVerifier(100, 2000, "LevelDB", true);
+    cout << "Para exec root: " << paraExe.executeVerifier(100, 2000, "LevelDB", true) << endl;
+    cout << "Para exec stata" << paraState << endl;
     BOOST_CHECK_EQUAL(serialState, paraState);
 }
 

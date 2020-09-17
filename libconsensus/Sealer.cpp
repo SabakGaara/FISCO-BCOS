@@ -36,6 +36,8 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::consensus;
 
+uint64_t tx_count = 1;
+
 /// start the Sealer module
 void Sealer::start()
 {
@@ -72,7 +74,7 @@ void Sealer::reportNewBlock()
     if (m_syncBlock.compare_exchange_strong(t, false))
     {
         shared_ptr<dev::eth::Block> p_block =
-            m_blockChain->getBlockByNumber(m_blockChain->number());
+                m_blockChain->getBlockByNumber(m_blockChain->number());
         if (!p_block)
         {
             LOG(ERROR) << "[reportNewBlock] empty block";
@@ -96,12 +98,57 @@ bool Sealer::shouldWait(bool const& wait) const
 {
     return !m_syncBlock && wait;
 }
+//
+//void Sealer::doWork(bool wait)
+//{
+//    reportNewBlock();
+//    if (shouldSeal() && m_startConsensus.load())
+//    {
+//        WriteGuard l(x_sealing);
+//        {
+//            /// get current transaction num
+//            uint64_t tx_num = m_sealing.block->getTransactionSize();
+//
+//            /// add this to in case of unlimited-loop
+//            if (m_txPool->status().current == 0)
+//            {
+//                m_syncTxPool = false;
+//            }
+//            else
+//            {
+//                m_syncTxPool = true;
+//            }
+//            auto maxTxsPerBlock = maxBlockCanSeal();
+//            /// load transaction from transaction queue
+//            if (maxTxsPerBlock > tx_num && m_syncTxPool == true && !reachBlockIntervalTime())
+//                loadTransactions(maxTxsPerBlock - tx_num);
+//            /// check enough or reach block interval
+//            if (!checkTxsEnough(maxTxsPerBlock))
+//            {
+//                ///< 10 milliseconds to next loop
+//                unique_lock<mutex> l(x_signalled);
+//                m_signalled.wait_for(l, chrono::milliseconds(1));
+//                return;
+//            }
+//            if (shouldHandleBlock())
+//                handleBlock();
+//        }
+//    }
+//    if (shouldWait(wait))
+//    {
+//        unique_lock<mutex> l(x_blocksignalled);
+//        m_blockSignalled.wait_for(l, chrono::milliseconds(10));
+//    }
+//}
 
 void Sealer::doWork(bool wait)
 {
+
     reportNewBlock();
     if (shouldSeal() && m_startConsensus.load())
     {
+//        std::cout << "Im here" << m_sealing.block->getTransactionSize() <<  std::endl;
+//        std::cout << "transaction number" << tx_count << std::endl;
         WriteGuard l(x_sealing);
         {
             /// get current transaction num
@@ -118,18 +165,21 @@ void Sealer::doWork(bool wait)
             }
             auto maxTxsPerBlock = maxBlockCanSeal();
             /// load transaction from transaction queue
-            if (maxTxsPerBlock > tx_num && m_syncTxPool == true && !reachBlockIntervalTime())
-                loadTransactions(maxTxsPerBlock - tx_num);
+            if (maxTxsPerBlock > tx_num && m_syncTxPool == true){
+//                std::cout<< "notEnough1" << std::endl;
+                loadTransactions(maxTxsPerBlock - tx_num); }
             /// check enough or reach block interval
-            if (!checkTxsEnough(maxTxsPerBlock))
+            if (m_sealing.block->getTransactionSize() < tx_count)
             {
                 ///< 10 milliseconds to next loop
+//                std::cout<< "notEnough2" << std::endl;
                 unique_lock<mutex> l(x_signalled);
                 m_signalled.wait_for(l, chrono::milliseconds(1));
                 return;
             }
-            if (shouldHandleBlock())
-                handleBlock();
+            if (shouldHandleBlock()) {
+//                std::cout<< "notEnough3" << std::endl;
+                handleBlock();}
         }
     }
     if (shouldWait(wait))
@@ -194,8 +244,8 @@ void Sealer::resetBlock(std::shared_ptr<dev::eth::Block> block, bool resetNextLe
         block->resetCurrentBlock();
         block->header().setNumber(m_blockChain->number() + 2);
     }
-    /// reset block for current leader:
-    /// 1. clear the block; 2. populate header from the highest block
+        /// reset block for current leader:
+        /// 1. clear the block; 2. populate header from the highest block
     else
     {
         auto highestBlock = m_blockChain->getBlockByNumber(m_blockChain->number());

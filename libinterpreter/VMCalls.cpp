@@ -22,6 +22,13 @@
 
 #include "VM.h"
 
+DAG_V forDAG::lockDAG;
+
+forDAG forDagCase_1;
+
+DAG_V* forDagCase = &(forDagCase_1.lockDAG);
+//DAG_V *tempEntries = &(testMutex.tempEntries);
+
 namespace dev
 {
 namespace eth
@@ -176,7 +183,34 @@ void VM::caseCreate()
 
 void VM::caseCall()
 {
-    m_bounce = &VM::interpretCases;
+    int tmpMutex = -1;
+     m_bounce = &VM::interpretCases;
+    if (m_SP[1] == 4103)
+    {
+       // std::cout << "i am here"<< "id" << m_ID << std::endl;
+        forMutex = 0;
+        tmpMutex = 0;
+    }
+    else if (m_SP[1] == 4104)
+    {
+	    forMutex = 1;
+	    tmpMutex = 1;
+        if (forDagCase->m_totalVtxs != 0){
+            forDagCase->consume(m_ID);
+        }
+   	 m_bounce = &VM::interpretCases;
+    }
+    else
+    {
+        if (forDagCase->m_totalVtxs != 0){
+            forDagCase->consume(m_ID);
+        }
+    }
+//    else if (m_bounce == &VM::mutexCases)
+//    {
+//	a = 2;
+//	m_bounce = &VM::mutexCases;
+//    }
 
     evmc_message msg = {};
 
@@ -203,6 +237,74 @@ void VM::caseCall()
         m_SPP[0] = 0;
         m_io_gas += msg.gas;
     }
+
+    if (tmpMutex == 0)
+    {
+
+        // std::cout << "i am here"<< "id" << m_ID << std::endl;
+            if (forDagCase->m_totalVtxs != 0){
+//                std::cout<< "for verify _2 " << std::endl;
+                while (1)
+                {
+                    ID tmp = forDagCase->waitPop(true, m_ID);
+                    if(tmp != INVALID_ID_2)
+                    {
+		       forDagCase->consume(tmp);
+//                std::cout << "find"<< "id" << m_ID << std::endl;
+                        break;
+                    }
+                }
+                m_bounce = &VM::mutexCases;
+            }
+
+            else{
+//                std::cout<< "for miner _2 " << std::endl;
+                m_bounce = &VM::mutexCases;
+            }
+
+    }
+     else if (forMutex == 0)
+    {
+         m_bounce = &VM::mutexCases;
+    }
+    else
+    {
+	    m_bounce = &VM::interpretCases;
+    }
+    ++m_PC;
+}
+
+
+void VM::caseCallMutex()
+{
+    m_bounce = &VM::mutexCases;
+
+    evmc_message msg = {};
+
+    // Clear the return data buffer. This will not free the memory.
+    m_returnData.clear();
+
+    bytesRef output;
+    if (caseCallSetup(msg, output))
+    {
+        evmc_result result;
+        m_context->fn_table->call(&result, m_context, &msg);
+
+        m_returnData.assign(result.output_data, result.output_data + result.output_size);
+        bytesConstRef{&m_returnData}.copyTo(output);
+
+        m_SPP[0] = result.status_code == EVMC_SUCCESS ? 1 : 0;
+        m_io_gas += result.gas_left;
+
+        if (result.release)
+            result.release(&result);
+    }
+    else
+    {
+        m_SPP[0] = 0;
+        m_io_gas += msg.gas;
+    }
+    m_bounce = &VM::mutexCases;
     ++m_PC;
 }
 
@@ -271,6 +373,7 @@ bool VM::caseCallSetup(evmc_message& o_msg, bytesRef& o_output)
     o_msg.sender = m_message->destination;
     o_msg.input_data = m_mem.data() + size_t(inputOffset);
     o_msg.input_size = size_t(inputSize);
+    o_msg.m_ID = m_ID;
 
     bool balanceOk = true;
     if (haveValueArg)

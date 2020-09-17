@@ -228,7 +228,7 @@ public:
         Address const& _origin, u256 const& _value, u256 const& _gasPrice, bytesConstRef _data,
         bytes _code, h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall)
       : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code,
-            _codeHash, _depth, _isCreate, _staticCall)
+            _codeHash, _depth, _isCreate, _staticCall, 0)
     {
         account_map.insert(_myAddress);
         account_map.insert(_caller);

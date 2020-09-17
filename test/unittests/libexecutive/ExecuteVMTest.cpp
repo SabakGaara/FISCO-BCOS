@@ -92,7 +92,7 @@ public:
     {
         std::shared_ptr<Transaction> tx = std::make_shared<Transaction>(_transaction);
         cout << "init" << endl;
-        _e.initialize(tx);
+        _e.initialize(tx, 0);
         cout << "execute" << endl;
         if (!_e.execute())
         {

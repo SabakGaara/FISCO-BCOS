@@ -230,7 +230,7 @@ evmc_result FakeEvmc::execute(EVMSchedule const& schedule, bytes code, bytes dat
     h256 codeHash = sha3(code);
     assert(flags != EVMC_STATIC || kind == EVMC_CALL);  // STATIC implies a CALL.
     evmc_message msg = {toEvmC(destination), toEvmC(caller), toEvmC(value), data.data(),
-        data.size(), toEvmC(codeHash), toEvmC(0x0_cppui256), gas, depth, kind, flags};
+        data.size(), toEvmC(codeHash), toEvmC(0x0_cppui256), gas, depth, kind, flags, 0};
 
     evmc_result result =
         m_instance->execute(m_instance, m_context, mode, &msg, code.data(), code.size());

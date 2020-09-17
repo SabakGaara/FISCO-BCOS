@@ -102,12 +102,12 @@ public:
 
     /// Initializes the executive for evaluating a transaction. You must call finalize() at some
     /// point following this.
-    void initialize(bytesConstRef _transaction)
+    void initialize(bytesConstRef _transaction, uint32_t _txID)
     {
         initialize(std::make_shared<dev::eth::Transaction>(
-            _transaction, dev::eth::CheckTransaction::None));
+            _transaction, dev::eth::CheckTransaction::None), _txID);
     }
-    void initialize(dev::eth::Transaction::Ptr _transaction);
+    void initialize(dev::eth::Transaction::Ptr _transaction, uint32_t _txID);
     /// Finalise a transaction previously set up with initialize().
     /// @warning Only valid after initialize() and execute(), and possibly go().
     /// @returns true if the outermost execution halted normally, false if exceptionally halted.
@@ -191,13 +191,14 @@ public:
         m_tableFactorySavepoint = 0;
         m_logs.clear();
         m_t.reset();
+        m_ID = 0;
         m_res.reset();
     }
 
     void setEnvInfo(dev::eth::EnvInfo const& _envInfo) { m_envInfo = _envInfo; }
 
     void setState(std::shared_ptr<StateFace> _state) { m_s = _state; }
-
+    uint32_t m_ID;
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
@@ -228,6 +229,7 @@ private:
                                      ///< finalize().
 
     u256 m_gasCost;
+
 
     bool m_isCreation = false;
     Address m_newAddress;

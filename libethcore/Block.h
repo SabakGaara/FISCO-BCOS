@@ -123,6 +123,7 @@ public:
         return m_transactionReceipts;
     }
     Transaction::Ptr transaction(size_t const _index) const { return (*m_transactions)[_index]; }
+    TransactionReceipt::Ptr transactionReceipt(size_t const _index) const { return (*m_transactionReceipts)[_index]; }
     BlockHeader const& blockHeader() const { return m_blockHeader; }
     BlockHeader& header() { return m_blockHeader; }
     h256 headerHash() const { return m_blockHeader.hash(); }
@@ -259,6 +260,11 @@ public:
         noteReceiptChange();
     }
 
+    void sort()
+    {
+
+    }
+
     void calTransactionRoot(bool update = true) const;
     void calTransactionRootRC2(bool update = true) const;
     void calReceiptRoot(bool update = true) const;
@@ -304,12 +310,13 @@ protected:
         WriteGuard l_receipt(x_txReceiptsCache);
         m_tReceiptsCache = bytes();
     }
+    mutable std::shared_ptr<Transactions> m_transactions;
 
 protected:
     /// block header of the block (field 0)
     mutable BlockHeader m_blockHeader;
     /// transaction list (field 1)
-    mutable std::shared_ptr<Transactions> m_transactions;
+
     std::shared_ptr<TransactionReceipts> m_transactionReceipts;
     /// sig list (field 3)
     std::shared_ptr<std::vector<std::pair<u256, Signature>>> m_sigList;

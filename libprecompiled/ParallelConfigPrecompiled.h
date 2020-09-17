@@ -38,8 +38,11 @@ namespace precompiled
 struct ParallelConfig
 {
     typedef std::shared_ptr<ParallelConfig> Ptr;
-    std::string functionName;
-    u256 criticalSize;
+    std::string firstFunctionName;
+//    u256 criticalSize;
+    std::vector<std::string> secondFunctionName;
+    std::vector<u256> firstCriticalSize;
+    std::vector<u256> secondCriticalSize;
 };
 
 const std::string PARA_CONFIG_TABLE_PREFIX = "_contract_parafunc_";
@@ -63,11 +66,13 @@ public:
 private:
     void registerParallelFunction(dev::blockverifier::ExecutiveContext::Ptr context,
         bytesConstRef data, Address const& origin, bytes& out);
+    void registerParallelFunctions(dev::blockverifier::ExecutiveContext::Ptr context,
+                                  bytesConstRef data, Address const& origin, bytes& out);
     void unregisterParallelFunction(dev::blockverifier::ExecutiveContext::Ptr context,
         bytesConstRef data, Address const& origin, bytes& out);
 
 public:
-    /// get paralllel config, return nullptr if not found
+    /// get parallel config, return nullptr if not found
     ParallelConfig::Ptr getParallelConfig(dev::blockverifier::ExecutiveContext::Ptr context,
         Address const& contractAddress, uint32_t selector, Address const& origin);
 };

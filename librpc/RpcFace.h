@@ -41,6 +41,9 @@ public:
         this->bindAndAddMethod(jsonrpc::Procedure("getBlockNumber", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_INTEGER, NULL),
             &dev::rpc::RpcFace::getBlockNumberI);
+        this->bindAndAddMethod(jsonrpc::Procedure("test", jsonrpc::PARAMS_BY_POSITION,
+                                                  jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_INTEGER, NULL),
+                               &dev::rpc::RpcFace::testI);
         this->bindAndAddMethod(jsonrpc::Procedure("getPbftView", jsonrpc::PARAMS_BY_POSITION,
                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_INTEGER, NULL),
             &dev::rpc::RpcFace::getPbftViewI);
@@ -151,6 +154,13 @@ public:
     {
         response = this->getBlockNumber(boost::lexical_cast<int>(request[0u].asString()));
     }
+
+    inline virtual void testI(const Json::Value& request, Json::Value& response)
+    {
+        response = this->test(boost::lexical_cast<int>(request[0u].asString()));
+    }
+
+
     inline virtual void getPbftViewI(const Json::Value& request, Json::Value& response)
     {
         response = this->getPbftView(boost::lexical_cast<int>(request[0u].asString()));
@@ -281,6 +291,7 @@ public:
 
     // consensus part
     virtual std::string getBlockNumber(int param1) = 0;
+    virtual std::string test(int param1) = 0;
     virtual std::string getPbftView(int param1) = 0;
     virtual Json::Value getSealerList(int param1) = 0;
     virtual Json::Value getObserverList(int param1) = 0;

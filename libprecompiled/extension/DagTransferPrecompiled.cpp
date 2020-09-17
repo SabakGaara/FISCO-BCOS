@@ -45,7 +45,7 @@ const char* const DAG_TRANSFER_METHOD_SAV_STR_UINT = "userSave(string,uint256)";
 const char* const DAG_TRANSFER_METHOD_DRAW_STR_UINT = "userDraw(string,uint256)";
 const char* const DAG_TRANSFER_METHOD_TRS_STR2_UINT = "userTransfer(string,string,uint256)";
 const char* const DAG_TRANSFER_METHOD_BAL_STR = "userBalance(string)";
-
+int balance = 1000;
 // fields of table '_dag_transfer_'
 const std::string DAG_TRANSFER_FIELD_NAME = "user_name";
 const std::string DAG_TRANSFER_FIELD_BALANCE = "user_balance";
@@ -169,39 +169,45 @@ Table::Ptr DagTransferPrecompiled::openTable(
 bytes DagTransferPrecompiled::call(
     dev::blockverifier::ExecutiveContext::Ptr context, bytesConstRef param, Address const& origin)
 {
-    // PRECOMPILED_LOG(TRACE) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("call")
-    //                       << LOG_KV("param", toHex(param));
+    PRECOMPILED_LOG(TRACE) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("call")
+                           << LOG_KV("param", toHex(param));
 
     // parse function name
     uint32_t func = getParamFunc(param);
     bytesConstRef data = getParamData(param);
-
+   // PRECOMPILED_LOG(TRACE) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("call")
+   //                        << LOG_KV("param", toHex(func));
     bytes out;
     // user_name user_balance 2 fields in table, the key of table is user_name field
     if (func == name2Selector[DAG_TRANSFER_METHOD_ADD_STR_UINT])
     {  // userAdd(string,uint256)
         userAddCall(context, data, origin, out);
+	cout << "addcall" << endl;
     }
     else if (func == name2Selector[DAG_TRANSFER_METHOD_SAV_STR_UINT])
     {  // userSave(string,uint256)
         userSaveCall(context, data, origin, out);
+	cout << "savecall" << endl;
     }
     else if (func == name2Selector[DAG_TRANSFER_METHOD_DRAW_STR_UINT])
     {  // userDraw(string,uint256)
         userDrawCall(context, data, origin, out);
+	cout << "drawcall" << endl;
     }
     else if (func == name2Selector[DAG_TRANSFER_METHOD_TRS_STR2_UINT])
     {  // userTransfer(string,string,uint256)
         userTransferCall(context, data, origin, out);
+	cout << "transfercall" << endl;
     }
     else if (func == name2Selector[DAG_TRANSFER_METHOD_BAL_STR])
     {  // userBalance(string user)
         userBalanceCall(context, data, origin, out);
+	 cout << "balancecall" << endl;
     }
     else
     {
-        // PRECOMPILED_LOG(ERROR) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("error func")
-        //                       << LOG_KV("func", func);
+         PRECOMPILED_LOG(ERROR) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("error func")
+                               << LOG_KV("func", func);
     }
 
     // PRECOMPILED_LOG(TRACE) << LOG_BADGE("DagTransferPrecompiled") << LOG_DESC("call")
@@ -218,7 +224,7 @@ void DagTransferPrecompiled::userAddCall(dev::blockverifier::ExecutiveContext::P
     dev::eth::ContractABI abi;
     abi.abiOut(data, user, amount);
 
-    int ret;
+    int ret = 0;
     std::string strErrorMsg;
     do
     {
@@ -261,7 +267,8 @@ void DagTransferPrecompiled::userAddCall(dev::blockverifier::ExecutiveContext::P
 
         // end success
         ret = 0;
-    } while (0);
+	break;
+    } while (1);
 
     out = abi.abiIn("", u256(ret));
 }
@@ -274,10 +281,35 @@ void DagTransferPrecompiled::userSaveCall(dev::blockverifier::ExecutiveContext::
     dev::eth::ContractABI abi;
     abi.abiOut(data, user, amount);
 
-    int ret;
+    int ret = 0;
     dev::u256 balance;
     std::string strErrorMsg;
+    cout << "user info" << user << endl;
 
+    {
+	 //my_mutex_t::scoped_lock my_lock{my_mutex};
+	//my_mutex.lock();
+    	// balance_number= balance_number - 2;
+    	//cout << "balance_number_first:" << balance_number << "user:" << user << endl;
+    	for(int i = 0; i < 20000; i ++) {
+      //balance_number= balance_number - 2;
+    	}
+
+	if (count %2)
+	{
+    		balance_two= balance_two - 2;
+    		balance_number= balance_number - 2;
+	}
+	//cout << "balance_number_two:" << balance_two << "user:" << user << endl;
+	//if (balance_two != balance_number)
+	//{
+	//	cout << "not equal" << endl;
+	//	cout << "balance_number_two:" << balance_two << "balance_first"<< balance_number<<  endl;
+	//}
+        //cout << "balance_number_two:" << balance_two << "balance_first"<< balance_number<<  endl;
+	//my_mutex.unlock();
+    }
+    count = count + 1;
     do
     {
         if (invalidUserName(user))
@@ -348,9 +380,9 @@ void DagTransferPrecompiled::userSaveCall(dev::blockverifier::ExecutiveContext::
                 break;
             }
         }
-
+        break;
         ret = 0;
-    } while (0);
+    } while (1);
 
     out = abi.abiIn("", u256(ret));
 }
@@ -364,7 +396,7 @@ void DagTransferPrecompiled::userDrawCall(dev::blockverifier::ExecutiveContext::
     abi.abiOut(data, user, amount);
 
     dev::u256 balance;
-    int ret;
+    int ret = 0;
     std::string strErrorMsg;
 
     do
@@ -423,7 +455,7 @@ void DagTransferPrecompiled::userDrawCall(dev::blockverifier::ExecutiveContext::
         }
 
         ret = 0;
-    } while (0);
+    } while (1);
 
     out = abi.abiIn("", u256(ret));
 }
@@ -436,7 +468,7 @@ void DagTransferPrecompiled::userBalanceCall(dev::blockverifier::ExecutiveContex
     abi.abiOut(data, user);
 
     dev::u256 balance;
-    int ret;
+    int ret = 0;
     std::string strErrorMsg;
 
     do
@@ -467,7 +499,8 @@ void DagTransferPrecompiled::userBalanceCall(dev::blockverifier::ExecutiveContex
         // only one record for every user
         balance = dev::u256(entries->get(0)->getField(DAG_TRANSFER_FIELD_BALANCE));
         ret = 0;
-    } while (0);
+	break;
+    } while (1);
 
     out = abi.abiIn("", u256(ret), balance);
 }
@@ -484,11 +517,13 @@ void DagTransferPrecompiled::userTransferCall(
     dev::u256 toUserBalance, newToUserBalance;
 
     std::string strErrorMsg;
-    int ret;
+    int ret = 0;
 
     do
     {
-        // parameters check
+        
+	    // parameters check
+	cout << "fromusers info" << fromUser  << "toUser info" << toUser << endl;
         if (invalidUserName(fromUser) || invalidUserName(toUser))
         {
             strErrorMsg = "invalid user name";
@@ -589,7 +624,8 @@ void DagTransferPrecompiled::userTransferCall(
 
         // end with success
         ret = 0;
-    } while (0);
+	break;
+    } while (1);
 
     out = abi.abiIn("", u256(ret));
 }

@@ -30,16 +30,20 @@
 #include <test/tools/libutils/FakeEvmc.h>
 #include <test/tools/libutils/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
+#include <tbb/spin_mutex.h>
+#include <tbb/parallel_for.h>
 #include <iostream>
 #include <map>
 #include <memory>
 
+//my_mutex_t TBBMUTEX::my_mutex_2;
+TBBMUTEX testMutex_2;
 
 using namespace std;
 using namespace dev;
 using namespace dev::test;
 using namespace dev::eth;
-
+extern my_mutex_t my_mutex_2;
 namespace dev
 {
 namespace test
@@ -48,7 +52,7 @@ class InterpreterFixture : TestOutputHelperFixture
 {
 public:
     InterpreterFixture() : evmc(evmc_create_interpreter()){};
-
+    my_mutex_t my_mutex_2;
     FakeEvmc evmc;
     FakeState& state = evmc.getState();
 
@@ -1172,6 +1176,191 @@ BOOST_AUTO_TEST_CASE(internalCallTest)
     BOOST_CHECK_EQUAL(456, xResult);
 }
 
+
+BOOST_AUTO_TEST_CASE(paraTest)
+{
+    /*
+    pragma solidity ^0.4.2;
+    contract HelloWorld{
+        uint256 x;
+        function HelloWorld(){
+           x = 123;
+        }
+        function get()constant returns(uint256){
+            return x;
+        }
+        function set(uint256 n){
+            x = n;
+        }
+    }
+    */
+
+
+
+    dev::eth::EVMSchedule const& schedule = DefaultSchedule;
+    bytes code = fromHex(
+        string("608060405234801561001057600080fd5b50600080819055506000600181905550"
+            "6101618061002f6000396000f30060806040526004361061004c576000357c0100"
+            "000000000000000000000000000000000000000000000000000000900463ffffff"
+            "ff1680636d4ce63c14610051578063b8e010de1461007c575b600080fd5b348015"
+            "61005d57600080fd5b50610066610093565b604051808281526020019150506040"
+            "5180910390f35b34801561008857600080fd5b5061009161009c565b005b600080"
+            "54905090565b600061100773ffffffffffffffffffffffffffffffffffffffff16"
+            "600060405160006040518083038185875af1925050505060026000540160008190"
+            "5550600090505b6103e88112156100f65780806001019150506100df565b600260"
+            "01540160018190555061100873ffffffffffffffffffffffffffffffffffffffff"
+            "16600060405160006040518083038185875af19250505050505600a165627a7a72"
+            "305820c359a828ee9e5501deb30f9238243baefcc2aec94302dde83a8b94548a33"
+            "49fc0029") + string(""));
+    bytes data = fromHex("");
+    Address destination{KeyPair::create().address()};
+    Address caller = Address("1000000000000000000000000000000000000000");
+    u256 value = 0;
+    int64_t gas = 1000000;
+    int32_t depth = 0;
+    bool isCreate = true;
+    bool isStaticCall = false;
+
+    evmc_result result = evmc.execute(
+        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+    printResult(result);
+    printAccount(destination);
+    BOOST_CHECK(0 == result.status_code);
+
+    // call function get()
+//    code = getContractCode(destination);
+//    data = fromHex("0x6d4ce63c");
+//    isCreate = false;
+//    isStaticCall = true;
+//
+//    result = evmc.execute(
+//        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+//    printResult(result);
+//    printAccount(destination);
+//    BOOST_CHECK(0 == result.status_code);
+
+    // call function set(456)
+    code = getContractCode(destination);
+    data = fromHex("0xb8e010de");
+    isCreate = false;
+    isStaticCall = false;
+    TBBMUTEX testMutex_2;
+    cout << "test info address" << &(testMutex_2.my_mutex_2) << endl;
+    //my_mutex_t testMutex_2.my_mutex_2;
+    tbb::parallel_for(tbb::blocked_range<int>(0, 10),
+    [&](const tbb::blocked_range<int>& _r) {
+        for (int i=_r.begin(); i!=_r.end(); ++i)
+        {
+            result = evmc.execute(
+                    schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+	    printAccount(destination);
+	    cout<< "range" << i << endl;
+        }
+
+    });
+//    result = evmc.execute(
+//        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+    //printResult(result);
+    //printAccount(destination);
+    BOOST_CHECK(0 == result.status_code);
+
+//    u256 xResult = getStateValueU256(
+//        destination, "0000000000000000000000000000000000000000000000000000000000000000");
+//    BOOST_CHECK_EQUAL(u256(456), xResult);
+}
+
+
+    dev::eth::EVMSchedule const& schedule = DefaultSchedule;
+    BOOST_AUTO_TEST_CASE(para2Test)
+        {
+                /*
+                pragma solidity ^0.4.2;
+                contract HelloWorld{
+                    uint256 x;
+                    function HelloWorld(){
+                       x = 123;
+                    }
+                    function get()constant returns(uint256){
+                        return x;
+                    }
+                    function set(uint256 n){
+                        x = n;
+                    }
+                }
+                */
+
+
+
+                dev::eth::EVMSchedule const& schedule = DefaultSchedule;
+        bytes code = fromHex(
+        string("608060405234801561001057600080fd5b50600080819055506"
+               "00060018190555060f68061002e6000396000f30060806040526"
+               "00436106049576000357c01000000000000000000000000000000"
+               "00000000000000000000000000900463ffffffff1680636d4ce63c1"
+               "4604e578063b8e010de146076575b600080fd5b348015605957600080f"
+               "d5b506060608a565b6040518082815260200191505060405180910390f35b3"
+               "48015608157600080fd5b5060886093565b005b60008054905090565b60006002600"
+               "05401600081905550600090505b6103e881121560bb57808060010191505060a6565"
+               "b600260015401600181905550505600a165627a7a72305820fc935098eb149b949657209b"
+               "c8beca4deea91134f9300818422f4a4fd265f4800029") + string(""));
+        bytes data = fromHex("");
+        Address destination{KeyPair::create().address()};
+        Address caller = Address("1000000000000000000000000000000000000001");
+        u256 value = 0;
+        int64_t gas = 1000000;
+        int32_t depth = 0;
+        bool isCreate = true;
+        bool isStaticCall = false;
+
+        evmc_result result = evmc.execute(
+        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+        printResult(result);
+        printAccount(destination);
+        BOOST_CHECK(0 == result.status_code);
+
+        // call function get()
+//    code = getContractCode(destination);
+//    data = fromHex("0x6d4ce63c");
+//    isCreate = false;
+//    isStaticCall = true;
+//
+//    result = evmc.execute(
+//        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+//    printResult(result);
+//    printAccount(destination);
+//    BOOST_CHECK(0 == result.status_code);
+
+        // call function set(456)
+        code = getContractCode(destination);
+        data = fromHex("0xb8e010de");
+        isCreate = false;
+        isStaticCall = false;
+        TBBMUTEX testMutex_2;
+        cout << "test_2 info address" << &(testMutex_2.my_mutex_2) << endl;
+        //my_mutex_t testMutex_2.my_mutex_2;
+        tbb::parallel_for(tbb::blocked_range<int>(0, 10),
+        [&](const tbb::blocked_range<int>& _r) {
+            for (int i=_r.begin(); i!=_r.end(); ++i)
+            {
+                result = evmc.execute(
+                        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+                printAccount(destination);
+                cout<< "range_2" << i << endl;
+            }
+
+        });
+//    result = evmc.execute(
+//        schedule, code, data, destination, caller, value, gas, depth, isCreate, isStaticCall);
+        //printResult(result);
+        //printAccount(destination);
+        BOOST_CHECK(0 == result.status_code);
+
+//    u256 xResult = getStateValueU256(
+//        destination, "0000000000000000000000000000000000000000000000000000000000000000");
+//    BOOST_CHECK_EQUAL(u256(456), xResult);
+        }
+
+
 BOOST_AUTO_TEST_CASE(errorCodeTest)
 {
     dev::eth::EVMSchedule const& schedule = DefaultSchedule;
@@ -1228,6 +1417,10 @@ BOOST_AUTO_TEST_CASE(errorCodeTest)
     printResult(result);
     BOOST_CHECK(result.status_code == EVMC_BAD_JUMP_DESTINATION);
 }
+
+
+
+
 
 
 BOOST_AUTO_TEST_SUITE_END()

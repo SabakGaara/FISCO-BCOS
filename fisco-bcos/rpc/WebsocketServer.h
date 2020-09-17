@@ -66,7 +66,13 @@ class session : public std::enable_shared_from_this<session>
         m_mapRpc.insert(std::make_pair(
             "getBlockNumber", std::bind(&dev::rpc::RpcFace::getBlockNumberI, m_rpcFace,
                                   std::placeholders::_1, std::placeholders::_2)));
-        m_mapRpc.insert(
+        
+	        m_mapRpc.insert(std::make_pair(
+            "test", std::bind(&dev::rpc::RpcFace::testI, m_rpcFace,
+                                  std::placeholders::_1, std::placeholders::_2)));
+	
+	
+	m_mapRpc.insert(
             std::make_pair("getPbftView", std::bind(&dev::rpc::RpcFace::getPbftViewI, m_rpcFace,
                                               std::placeholders::_1, std::placeholders::_2)));
         m_mapRpc.insert(std::make_pair(

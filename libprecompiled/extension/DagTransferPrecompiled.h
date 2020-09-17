@@ -24,6 +24,7 @@
 
 #include <libdevcore/Common.h>
 #include <libethcore/Common.h>
+#include <tbb/spin_mutex.h>
 
 namespace dev
 {
@@ -67,6 +68,12 @@ public:
         Address const& origin, bytes& out);
     void userTransferCall(dev::blockverifier::ExecutiveContext::Ptr context, bytesConstRef data,
         Address const& origin, bytes& out);
+    int balance_number = 1000;
+    int balance_two = 1000;
+    //using my_mutex_t = tbb::speculative_spin_mutex;
+    using my_mutex_t = tbb::spin_mutex;
+    my_mutex_t my_mutex;
+    int count = 1;
 };
 
 }  // namespace precompiled

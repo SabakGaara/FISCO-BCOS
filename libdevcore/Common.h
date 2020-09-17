@@ -51,6 +51,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+//#include "DAG_V.h"
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -60,6 +61,7 @@
 #include "Log.h"
 #include "secure_vector.h"
 #include "vector_ref.h"
+
 
 // CryptoPP defines byte in the global namespace, so must we.
 using byte = uint8_t;
@@ -425,5 +427,6 @@ private:
 
 std::string newSeq();
 void pthread_setThreadName(std::string const& _n);
+}
 
-}  // namespace dev
+

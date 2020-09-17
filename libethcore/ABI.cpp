@@ -57,7 +57,7 @@ bool ContractABI::abiOutByFuncSelector(
             deserialise(addr, offset);
             _out.push_back(addr.hex());
         }
-        else if ("string" == type)
+        else if ("string" == type || "bytes32" == type)
         {
             u256 stringOffset;
             deserialise(stringOffset, offset);
@@ -68,6 +68,7 @@ bool ContractABI::abiOutByFuncSelector(
         }
         else
         {  // unsupport type
+	    std::cout << "unsupport type " << type << std::endl; 
             return false;
         }
 

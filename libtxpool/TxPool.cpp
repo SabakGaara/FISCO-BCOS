@@ -36,6 +36,8 @@ namespace dev
 {
 namespace txpool
 {
+
+h256 tx_hash;
 // import transaction to the txPool
 std::pair<h256, Address> TxPool::submit(Transaction::Ptr _tx)
 {
@@ -241,7 +243,7 @@ ImportResult TxPool::import(Transaction::Ptr _tx, IfDropped)
             WriteGuard txsLock(x_txsHashFilter);
             m_txsHashFilter->insert(_tx->sha3());
         }
-        m_onReady();
+        //m_onReady();
     }
     return verify_ret;
 }
@@ -298,57 +300,10 @@ bool TxPool::txExists(dev::h256 const& txHash)
  * @param _drop_policy : Import transaction policy
  * @return ImportResult : import result
  */
-ImportResult TxPool::verify(Transaction::Ptr trans, IfDropped _drop_policy)
+ImportResult TxPool::verify(Transaction::Ptr trans)
 {
     /// check whether this transaction has been existed
-    h256 tx_hash = trans->sha3();
-    if (m_txsHash.count(tx_hash))
-    {
-        TXPOOL_LOG(TRACE) << LOG_DESC("Verify: already known tx")
-                          << LOG_KV("hash", tx_hash.abridged());
-        return ImportResult::AlreadyKnown;
-    }
-    /// the transaction has been dropped before
-    if (m_dropped.count(tx_hash) && _drop_policy == IfDropped::Ignore)
-    {
-        TXPOOL_LOG(TRACE) << LOG_DESC("Verify: already dropped tx: ")
-                          << LOG_KV("hash", tx_hash.abridged());
-        return ImportResult::AlreadyInChain;
-    }
-    /// check nonce
-    if (trans->nonce() == Invalid256 || (!m_txNonceCheck->isNonceOk(*trans, false)))
-    {
-        return ImportResult::TransactionNonceCheckFail;
-    }
-    if (false == m_txNonceCheck->isBlockLimitOk(*trans))
-    {
-        return ImportResult::BlockLimitCheckFailed;
-    }
-    try
-    {
-        /// check transaction signature here when everything is ok
-        trans->sender();
-    }
-    catch (std::exception& e)
-    {
-        TXPOOL_LOG(ERROR) << "[Verify] invalid signature, tx = " << tx_hash.abridged();
-        return ImportResult::Malformed;
-    }
-    /// nonce related to txpool must be checked at the last, since this will insert nonce of the
-    /// valid transaction into the txpool nonce cache
-    if (false == txPoolNonceCheck(trans))
-    {
-        return ImportResult::TxPoolNonceCheckFail;
-    }
-    /// check chainId and groupId
-    if (false == trans->checkChainId(u256(g_BCOSConfig.chainId())))
-    {
-        return ImportResult::InvalidChainId;
-    }
-    if (false == trans->checkGroupId(u256(m_groupId)))
-    {
-        return ImportResult::InvalidGroupId;
-    }
+    tx_hash = trans->sha3();
     /// TODO: filter check
     return ImportResult::Success;
 }

@@ -70,7 +70,7 @@ public:
     Json::Value getSealerList(int _groupID) override;
     Json::Value getObserverList(int _groupID) override;
     Json::Value getConsensusStatus(int _groupID) override;
-
+    std::string test(int _groupID) override;
     // sync part
     Json::Value getSyncStatus(int _groupID) override;
 

@@ -66,8 +66,9 @@ void Transaction::decodeRC1(RLP const& rlp, CheckTransaction _checkSig)
 
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
-        m_gas = rlp[2].toInt<u256>();
-        m_blockLimit = rlp[3].toInt<u256>();
+        //m_gas = rlp[2].toInt<u256>();
+        m_gas = 9000000000000000000;
+	m_blockLimit = rlp[3].toInt<u256>();
         m_type = rlp[4].isEmpty() ? ContractCreation : MessageCall;
         m_receiveAddress = rlp[4].isEmpty() ? Address() : rlp[4].toHash<Address>(RLP::VeryStrict);
         m_value = rlp[5].toInt<u256>();
@@ -113,7 +114,7 @@ void Transaction::decodeRC2(RLP const& rlp, CheckTransaction _checkSig)
 
         m_nonce = rlp[0].toInt<u256>();
         m_gasPrice = rlp[1].toInt<u256>();
-        m_gas = rlp[2].toInt<u256>();
+        m_gas = 90000000000000000;
         m_blockLimit = rlp[3].toInt<u256>();
         m_type = rlp[4].isEmpty() ? ContractCreation : MessageCall;
         m_receiveAddress = rlp[4].isEmpty() ? Address() : rlp[4].toHash<Address>(RLP::VeryStrict);

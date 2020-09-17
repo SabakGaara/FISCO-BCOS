@@ -48,7 +48,7 @@ static void ExecuteTransaction(
     ExecutionResult&, std::shared_ptr<MPTState> mptState, EnvInfo& info, Transaction::Ptr tx)
 {
     Executive executive(mptState, info, 0);
-    executive.initialize(tx);
+    executive.initialize(tx, 0);
     /// execute transaction
     if (!executive.execute())
     {

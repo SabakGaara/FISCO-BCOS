@@ -45,6 +45,9 @@ using namespace dev::precompiled;
 
 static const int64_t maxTransactionGasLimit = 0x7fffffffffffffff;
 static const int64_t gasPrice = 1;
+// int tx_num = 3;
+int a = 100;
+std::shared_ptr<Transactions> txs = std::make_shared<Transactions>();
 
 std::map<int, std::string> dev::rpc::RPCMsg{{RPCExceptionType::Success, "Success"},
     {RPCExceptionType::GroupID, "GroupID does not exist"},
@@ -194,6 +197,14 @@ std::string Rpc::getBlockNumber(int _groupID)
         BOOST_THROW_EXCEPTION(
             JsonRpcException(Errors::ERROR_RPC_INTERNAL_ERROR, boost::diagnostic_information(e)));
     }
+}
+
+std::string Rpc::test(int _groupID)
+{
+    a = a - _groupID;
+
+    tx_count = _groupID;
+    return toJS(tx_count);
 }
 
 
@@ -1010,9 +1021,11 @@ Json::Value Rpc::getTotalTransactionCount(int _groupID)
 }
 
 Json::Value Rpc::call(int _groupID, const Json::Value& request)
+
 {
     try
     {
+        auto txPool = ledgerManager()->txPool(_groupID);
         RPC_LOG(TRACE) << LOG_BADGE("call") << LOG_DESC("request") << LOG_KV("groupID", _groupID)
                        << LOG_KV("callParams", request.toStyledString());
 
@@ -1035,12 +1048,18 @@ Json::Value Rpc::call(int _groupID, const Json::Value& request)
             maxTransactionGasLimit, txSkeleton.to, txSkeleton.data, txSkeleton.nonce);
         auto blockHeader = block->header();
         tx->forceSender(txSkeleton.from);
-        auto executionResult = blockverfier->executeTransaction(blockHeader, tx);
+
+        std::pair<h256, Address> ret;
+        tx->sha3();
+
+        ret = txPool->submitTransactions(tx);
+        auto transaction = ret.first;
+        // auto executionResult = blockverfier->executeTransaction(blockHeader, tx);
 
         Json::Value response;
-        response["currentBlockNumber"] = toJS(blockNumber);
-        response["status"] = toJS(executionResult->status());
-        response["output"] = toJS(executionResult->outputBytes());
+        response["currentBlockNumber"] = toJS(transaction);
+        response["status"] = toJS(transaction);
+        response["output"] = toJS(transaction);
         return response;
     }
     catch (JsonRpcException& e)
@@ -1074,7 +1093,9 @@ std::string Rpc::sendRawTransaction(int _groupID, const std::string& _rlp)
         Transaction::Ptr tx = std::make_shared<Transaction>(
             jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::Everything);
         // receive transaction from channel or rpc
-        tx->setRpcTx(true);
+	std::cout<<"gas info" << tx->gas() << std::endl;
+	tx->setRpcTx(true);
+        txs->push_back(tx);
         auto currentTransactionCallback = m_currentTransactionCallback.get();
 
         uint32_t clientProtocolversion = ProtocolVersion::v1;

@@ -23,8 +23,18 @@
 #pragma once
 
 #include <libethcore/EVMSchedule.h>
+#include <tbb/concurrent_vector.h>
 #include <atomic>
 #include <string>
+//#include <libblockverifier/TxDAG_V.h>
+
+//#include <tbb/spin_mutex.h>
+
+//using my_mutex_t = tbb::speculative_spin_mutex;
+extern tbb::concurrent_vector<uint32_t> ID_vector;
+
+//extern TxDAG_V* lockDAG;
+
 namespace dev
 {
 enum VERSION : uint32_t

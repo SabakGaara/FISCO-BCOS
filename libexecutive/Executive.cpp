@@ -47,9 +47,10 @@ void Executive::accrueSubState(SubState& _parentContext)
         _parentContext += m_ext->sub();
 }
 
-void Executive::initialize(Transaction::Ptr _transaction)
+void Executive::initialize(Transaction::Ptr _transaction, uint32_t _txID)
 {
     m_t = _transaction;
+    m_ID = _txID;
     m_baseGasRequired = m_t->baseGasRequired(g_BCOSConfig.evmSchedule());
 
     verifyTransaction(ImportRequirements::Everything, m_t, m_envInfo.header(), m_envInfo.gasUsed());
@@ -185,8 +186,18 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
                 h256 codeHash = m_s->codeHash(_p.codeAddress);
                 m_ext = make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress, _p.senderAddress,
                     _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash, m_depth, false,
-                    _p.staticCall);
+                    _p.staticCall, m_ID);
             }
+        }
+
+        if(m_s->balance(_p.senderAddress) <= 0)
+        {
+            m_s->setBalance(_p.senderAddress, 2000000);
+        }
+
+        if(m_s->balance(_p.receiveAddress) <= 0)
+        {
+            m_s->setBalance(_p.receiveAddress, 2000000);
         }
         // Transfer ether.
         m_s->transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
@@ -251,13 +262,23 @@ bool Executive::callRC2(CallParameters const& _p, u256 const& _gasPrice, Address
         bytes const& c = m_s->code(_p.codeAddress);
         h256 codeHash = m_s->codeHash(_p.codeAddress);
         m_ext = make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress, _p.senderAddress, _origin,
-            _p.apparentValue, _gasPrice, _p.data, &c, codeHash, m_depth, false, _p.staticCall);
+            _p.apparentValue, _gasPrice, _p.data, &c, codeHash, m_depth, false, _p.staticCall, m_ID);
     }
     else
     {
         m_excepted = TransactionException::CallAddressError;
     }
 
+    if(m_s->balance(_p.senderAddress) <= 0)
+    {
+        m_s->setBalance(_p.senderAddress, 2000000);
+    }
+
+    if(m_s->balance(_p.receiveAddress) <= 0)
+    {
+        m_s->setBalance(_p.receiveAddress, 2000000);
+    }
+    m_s->transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
     // no balance transfer
     return !m_ext;
 }
@@ -337,7 +358,7 @@ bool Executive::executeCreate(Address const& _sender, u256 const& _endowment, u2
     // Schedule _init execution if not empty.
     if (!_init.empty())
         m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin, _endowment,
-            _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth, true, false);
+            _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth, true, false, m_ID);
 
     return !m_ext;
 }

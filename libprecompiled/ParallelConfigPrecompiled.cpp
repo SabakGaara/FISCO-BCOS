@@ -44,14 +44,19 @@ const string PARA_KEY = "parallel";
 const string PARA_SELECTOR = "selector";
 const string PARA_FUNC_NAME = "functionName";
 const string PARA_CRITICAL_SIZE = "criticalSize";
+const string CON_PARA_SELECTOR = "con_selector";
+const string CON_PARA_FUNC_NAME = "con_functionName";
+const string CON_PARA_CRITICAL_SIZE = "con_criticalSize";
 
 const string PARA_CONFIG_REGISTER_METHOD_ADDR_STR_UINT =
     "registerParallelFunctionInternal(address,string,uint256)";
 const string PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR =
     "unregisterParallelFunctionInternal(address,string)";
+const string PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR_S =
+        "registerParallelFunctionsInternal(address,string,uint256,string,uint256)";
 
 const string PARA_KEY_NAME = PARA_KEY;
-const string PARA_VALUE_NAMES = PARA_SELECTOR + "," + PARA_FUNC_NAME + "," + PARA_CRITICAL_SIZE;
+const string PARA_VALUE_NAMES = PARA_SELECTOR + "," + PARA_FUNC_NAME + "," + CON_PARA_SELECTOR + "," + CON_PARA_FUNC_NAME + "," + PARA_CRITICAL_SIZE + "," + CON_PARA_CRITICAL_SIZE;
 
 
 ParallelConfigPrecompiled::ParallelConfigPrecompiled()
@@ -60,6 +65,8 @@ ParallelConfigPrecompiled::ParallelConfigPrecompiled()
         getFuncSelector(PARA_CONFIG_REGISTER_METHOD_ADDR_STR_UINT);
     name2Selector[PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR] =
         getFuncSelector(PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR);
+    name2Selector[PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR_S] =
+        getFuncSelector(PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR_S);
 }
 
 string ParallelConfigPrecompiled::toString()
@@ -77,6 +84,8 @@ bytes ParallelConfigPrecompiled::call(
     ContractABI abi;
     bytes out;
 
+    std::cout << "call here" << std::endl;
+    std::cout << func << std::endl;
     if (func == name2Selector[PARA_CONFIG_REGISTER_METHOD_ADDR_STR_UINT])
     {
         registerParallelFunction(context, data, origin, out);
@@ -84,6 +93,11 @@ bytes ParallelConfigPrecompiled::call(
     else if (func == name2Selector[PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR])
     {
         unregisterParallelFunction(context, data, origin, out);
+    }
+    else if(func == name2Selector[PARA_CONFIG_UNREGISTER_METHOD_ADDR_STR_S])
+    {
+	std::cout << "start here" << std::endl;
+        registerParallelFunctions(context, data, origin, out);
     }
     else
     {
@@ -183,6 +197,72 @@ void ParallelConfigPrecompiled::registerParallelFunction(
     }
 }
 
+void ParallelConfigPrecompiled::registerParallelFunctions(
+        dev::blockverifier::ExecutiveContext::Ptr context, bytesConstRef data, Address const& origin,
+        bytes& out)
+{
+    // registerParallelFunctionInternal(address,string,uint256)
+    // registerParallelFunctionInternal(address contractAddress, string functionName, uint256
+    // criticalSize)
+
+    Address contractAddress;
+    string first_functionName;
+    u256 first_criticalSize;
+    string second_functionName;
+    u256 second_criticalSize;
+
+    ContractABI abi;
+    abi.abiOut(data, contractAddress, first_functionName, first_criticalSize, second_functionName, second_criticalSize);
+    uint32_t first_selector = getFuncSelector(first_functionName);
+    uint32_t second_selector = getFuncSelector(second_functionName);
+    std::cout << "success " << first_functionName << " and " << second_functionName << std::endl;
+
+    Table::Ptr table = openTable(context, contractAddress, origin);
+    if (table && table.get())
+    {
+	std::cout << "success hreeee" << std::endl;
+        Entry::Ptr entry = table->newEntry();
+        entry->setField(PARA_SELECTOR, to_string(first_selector));
+        entry->setField(PARA_FUNC_NAME, first_functionName);
+        entry->setField(CON_PARA_SELECTOR, to_string(second_selector));
+        entry->setField(CON_PARA_FUNC_NAME, second_functionName);
+        // important:
+        // this will cause rc3 blockchain that use this version is incompatible with release-2.0.0
+        // when upgrade the blockchain to release-2.0.0, please make sure that this contract hasn't
+        // been used
+	 std::cout << "success here2" << std::endl;
+        if (g_BCOSConfig.version() <= RC3_VERSION)
+        {
+            entry->setField(PARA_CRITICAL_SIZE, toBigEndianString(first_criticalSize));
+            entry->setField(CON_PARA_CRITICAL_SIZE, toBigEndianString(second_criticalSize));
+        }
+        else
+        {
+            entry->setField(PARA_CRITICAL_SIZE, boost::lexical_cast<std::string>(first_criticalSize));
+            entry->setField(CON_PARA_CRITICAL_SIZE, boost::lexical_cast<std::string>(second_criticalSize));
+        }
+	std::cout << "success here3" << std::endl;
+
+//        Condition::Ptr cond = table->newCondition();
+//        cond->EQ(PARA_SELECTOR, to_string(selector));
+//        auto entries = table->select(PARA_KEY, cond);
+//        if (entries->size() == 0)
+//        {
+        table->insert(PARA_KEY, entry, make_shared<AccessOptions>(origin), false);
+//        }
+//        else
+//        {
+//            table->update(PARA_KEY, entry, cond, make_shared<AccessOptions>(origin));
+//        }
+	std::cout << "success here4" << std::endl;
+        out = abi.abiIn("", u256(CODE_SUCCESS));
+        PRECOMPILED_LOG(DEBUG) << LOG_BADGE("PARA") << LOG_DESC("registerParallelFunction success")
+                               << LOG_KV(PARA_SELECTOR, to_string(first_selector))
+                               << LOG_KV(PARA_FUNC_NAME, first_functionName)
+                               << LOG_KV(PARA_CRITICAL_SIZE, first_criticalSize);
+    }
+}
+
 void ParallelConfigPrecompiled::unregisterParallelFunction(
     dev::blockverifier::ExecutiveContext::Ptr context, bytesConstRef data, Address const& origin,
     bytes& out)
@@ -208,7 +288,6 @@ void ParallelConfigPrecompiled::unregisterParallelFunction(
                            << LOG_KV(PARA_SELECTOR, to_string(selector));
 }
 
-
 ParallelConfig::Ptr ParallelConfigPrecompiled::getParallelConfig(
     dev::blockverifier::ExecutiveContext::Ptr context, Address const& contractAddress,
     uint32_t selector, Address const& origin)
@@ -221,27 +300,87 @@ ParallelConfig::Ptr ParallelConfigPrecompiled::getParallelConfig(
     Condition::Ptr cond = table->newCondition();
     cond->EQ(PARA_SELECTOR, to_string(selector));
     auto entries = table->select(PARA_KEY, cond);
-    if (entries->size() == 0)
+
+    Condition::Ptr cond_2 = table->newCondition();
+    cond_2->EQ(CON_PARA_SELECTOR, to_string(selector));
+    auto entries_2 = table->select(PARA_KEY, cond_2);
+
+    if (entries->size() == 0 && entries_2->size() == 0)
     {
         return nullptr;
     }
     else
     {
-        auto entry = entries->get(0);
-        string funtionName = entry->getField(PARA_FUNC_NAME);
-        u256 criticalSize;
-        // important:
-        // this will cause rc3 blockchain that use this version is incompatible with release-2.0.0
-        // when upgrade the blockchain to release-2.0.0, please make sure that this contract hasn't
-        // been used
-        if (g_BCOSConfig.version() <= RC3_VERSION)
-        {
-            criticalSize = fromBigEndian<u256, string>(entry->getField(PARA_CRITICAL_SIZE));
+        std::string firstFunctionName;
+//    u256 criticalSize;
+        std::vector<std::string> secondFunctionName;
+        std::vector<u256> firstCriticalSize;
+        std::vector<u256> secondCriticalSize;
+
+        for(int i = 0;i<entries->size();i++){
+            auto entry = entries->get(i);
+            if (i == 0)
+            {
+                firstFunctionName = entry->getField(PARA_FUNC_NAME);
+            }
+
+            string secondName = entry->getField(CON_PARA_FUNC_NAME);
+            secondFunctionName.push_back(secondName);
+
+            u256 firstSize;
+            u256 secondSize;
+            // important:
+            // this will cause rc3 blockchain that use this version is incompatible with release-2.0.0
+            // when upgrade the blockchain to release-2.0.0, please make sure that this contract hasn't
+            // been used
+            if (g_BCOSConfig.version() <= RC3_VERSION)
+            {
+                firstSize = fromBigEndian<u256, string>(entry->getField(PARA_CRITICAL_SIZE));
+
+                secondSize = fromBigEndian<u256, string>(entry->getField(CON_PARA_CRITICAL_SIZE));
+
+            }
+            else
+            {
+                firstSize = boost::lexical_cast<u256>(entry->getField(PARA_CRITICAL_SIZE));
+                secondSize = boost::lexical_cast<u256>(entry->getField(CON_PARA_CRITICAL_SIZE));
+            }
+            firstCriticalSize.push_back(firstSize);
+            secondCriticalSize.push_back(secondSize);
         }
-        else
-        {
-            criticalSize = boost::lexical_cast<u256>(entry->getField(PARA_CRITICAL_SIZE));
+
+        for(int i = 0;i<entries_2->size();i++){
+            auto entry = entries_2->get(i);
+            if (i == 0)
+            {
+                firstFunctionName = entry->getField(CON_PARA_FUNC_NAME);
+            }
+
+            string secondName = entry->getField(PARA_FUNC_NAME);
+            secondFunctionName.push_back(secondName);
+
+            u256 firstSize;
+            u256 secondSize;
+            // important:
+            // this will cause rc3 blockchain that use this version is incompatible with release-2.0.0
+            // when upgrade the blockchain to release-2.0.0, please make sure that this contract hasn't
+            // been used
+            if (g_BCOSConfig.version() <= RC3_VERSION)
+            {
+                firstSize = fromBigEndian<u256, string>(entry->getField(CON_PARA_CRITICAL_SIZE));
+
+                secondSize = fromBigEndian<u256, string>(entry->getField(PARA_CRITICAL_SIZE));
+
+            }
+            else
+            {
+                firstSize = boost::lexical_cast<u256>(entry->getField(CON_PARA_CRITICAL_SIZE));
+                secondSize = boost::lexical_cast<u256>(entry->getField(PARA_CRITICAL_SIZE));
+            }
+            firstCriticalSize.push_back(firstSize);
+            secondCriticalSize.push_back(secondSize);
         }
-        return make_shared<ParallelConfig>(ParallelConfig{funtionName, criticalSize});
+
+        return make_shared<ParallelConfig>(ParallelConfig{firstFunctionName, secondFunctionName, firstCriticalSize, secondCriticalSize});
     }
 }

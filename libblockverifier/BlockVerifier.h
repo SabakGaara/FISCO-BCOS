@@ -39,6 +39,8 @@
 #include <algorithm>
 #include <memory>
 #include <thread>
+#include <libinterpreter/interpreter.h>
+
 
 namespace dev
 {
@@ -91,7 +93,7 @@ public:
 
     dev::eth::TransactionReceipt::Ptr execute(dev::eth::Transaction::Ptr _t,
         dev::eth::OnOpFunc const& _onOp, dev::blockverifier::ExecutiveContext::Ptr executiveContext,
-        dev::executive::Executive::Ptr executive);
+        dev::executive::Executive::Ptr executive, uint32_t _txID);
 
 
     void setExecutiveContextFactory(ExecutiveContextFactory::Ptr executiveContextFactory)

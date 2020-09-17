@@ -27,11 +27,13 @@
 #include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/Instruction.h>
-
+#include <tbb/spin_mutex.h>
 #include <evmc/evmc.h>
 #include <evmc/instructions.h>
+#include <libinterpreter/interpreter.h>
 
 #include <boost/optional.hpp>
+
 
 namespace dev
 {
@@ -74,6 +76,9 @@ public:
         uint8_t const* _code, size_t _codeSize);
 
     uint64_t m_io_gas = 0;
+    uint32_t m_ID;
+    int forMutex = -1;
+   //my_mutex_t *my_mutex_2 = &(testMutex.my_mutex_2);
 
 private:
     evmc_context* m_context = nullptr;
@@ -128,11 +133,12 @@ private:
 
     // interpreter loop & switch
     void interpretCases();
-
+    void mutexCases();
     // interpreter cases that call out
     void caseCreate();
     bool caseCallSetup(evmc_message& _msg, bytesRef& o_output);
     void caseCall();
+    void caseCallMutex();
 
     void copyDataToMemory(bytesConstRef _data, u256* _sp);
     uint64_t memNeed(u256 const& _offset, u256 const& _size);

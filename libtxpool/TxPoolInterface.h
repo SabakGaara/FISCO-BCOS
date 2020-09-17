@@ -26,6 +26,9 @@
 #include <libethcore/Common.h>
 #include <libethcore/Protocol.h>
 #include <libethcore/Transaction.h>
+
+extern uint64_t tx_count;
+
 namespace dev
 {
 namespace txpool

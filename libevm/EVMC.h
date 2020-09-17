@@ -88,7 +88,7 @@ public:
 
         evmc_message msg = {toEvmC(_ext.myAddress()), toEvmC(_ext.caller()), toEvmC(_ext.value()),
             _ext.data().data(), _ext.data().size(), toEvmC(_ext.codeHash()), toEvmC(0x0_cppui256),
-            gas, static_cast<int32_t>(_ext.depth()), kind, flags};
+            gas, static_cast<int32_t>(_ext.depth()), kind, flags, _ext.m_ID};
         return Result{m_instance->execute(
             m_instance, &_ext, mode, &msg, _ext.code().data(), _ext.code().size())};
     }

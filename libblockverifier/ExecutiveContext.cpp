@@ -40,9 +40,10 @@ bytes ExecutiveContext::call(Address const& origin, Address address, bytesConstR
     try
     {
         auto p = getPrecompiled(address);
-
+	
         if (p)
         {
+	    std::cout<< "context here" << std::endl;
             bytes out = p->call(shared_from_this(), param, origin);
             return out;
         }
@@ -137,6 +138,7 @@ std::shared_ptr<std::vector<std::string>> ExecutiveContext::getTxCriticals(const
         return nullptr;
     }
 
+
     auto p = getPrecompiled(_tx.receiveAddress());
     if (p)
     {
@@ -157,7 +159,7 @@ std::shared_ptr<std::vector<std::string>> ExecutiveContext::getTxCriticals(const
     }
     else
     {
-        // Normal transaction
+        // Normal transaction, 获取
         auto parallelConfigPrecompiled =
             std::dynamic_pointer_cast<dev::precompiled::ParallelConfigPrecompiled>(
                 getPrecompiled(Address(0x1006)));
@@ -176,49 +178,80 @@ std::shared_ptr<std::vector<std::string>> ExecutiveContext::getTxCriticals(const
             {  // Testing code
                 // bytesConstRef data = parallelConfigPrecompiled->getParamData(ref(_tx.data()));
                 auto res = make_shared<vector<string>>();
+                auto res_bak = make_shared<vector<string>>();
+
+
+//                std::string firstFunctionName;
+//                std::vector<std::string> secondFunctionName;
+//                std::vector<u256> firstCriticalSize;
+//                std::vector<u256> secondCriticalSize;
 
                 ABIFunc af;
-                bool isOk = af.parser(config->functionName);
+                bool isOk = af.parser(config->firstFunctionName);
                 if (!isOk)
                 {
                     EXECUTIVECONTEXT_LOG(DEBUG)
                         << LOG_DESC("[getTxCriticals] parser function signature failed, ")
-                        << LOG_KV("func signature", config->functionName);
+                        << LOG_KV("func signature", config->firstFunctionName);
 
                     return nullptr;
                 }
 
-                auto paramTypes = af.getParamsType();
-                if (paramTypes.size() < (size_t)config->criticalSize)
-                {
-                    EXECUTIVECONTEXT_LOG(DEBUG)
-                        << LOG_DESC("[getTxCriticals] params type less than  criticalSize")
-                        << LOG_KV("func signature", config->functionName)
-                        << LOG_KV("func criticalSize", config->criticalSize)
-                        << LOG_KV("input data", toHex(_tx.data()));
 
-                    return nullptr;
+//                if (paramTypes.size() < (size_t)config->criticalSize)
+//                {
+//                    EXECUTIVECONTEXT_LOG(DEBUG)
+//                        << LOG_DESC("[getTxCriticals] params type less than  criticalSize")
+//                        << LOG_KV("func signature", config->functionName)
+//                        << LOG_KV("func criticalSize", config->criticalSize)
+//                        << LOG_KV("input data", toHex(_tx.data()));
+//
+//                    return nullptr;
+//                }
+                for (int i = 0;i < config->firstCriticalSize.size();i++)
+                {
+		    // std::cout<<config->firstCriticalSize.size()<<" size" << std::endl; 
+                    auto paramTypes = af.getParamsType();
+                    paramTypes.resize((size_t)config->firstCriticalSize[i]);
+                    ContractABI abi;
+		    // std::cout << "jjjjjj" << std::endl;
+                    isOk = abi.abiOutByFuncSelector(ref(_tx.data()).cropped(4), paramTypes, *res);
+                    if (!isOk)
+                    {
+                        EXECUTIVECONTEXT_LOG(DEBUG) << LOG_DESC("[getTxCriticals] abiout failed, ")
+                                                    << LOG_KV("func signature", config->firstFunctionName)
+                                                    << LOG_KV("input data", toHex(_tx.data()));
+
+                       //  std::cout <<"lala " <<  config->firstFunctionName << std::endl;
+			return nullptr;
+                    }
+
+                    for (string& critical : *res)
+                    {
+			 // std::cout << "mmmmmmm" << std::endl;
+                        string critical_1 = critical + _tx.receiveAddress().hex() + config->firstFunctionName;
+                        string critical_2 = critical + _tx.receiveAddress().hex() + config->secondFunctionName[i];
+                        
+			// std::cout << " critical " << critical_1 << " " << critical_2 << std::endl;
+
+			vector<string>::iterator ret;
+		       	ret = std::find(res_bak->begin(), res_bak->end(), critical_1);
+		       	if (ret == res_bak->end())
+			{
+				//std::cout << " critical " << critical << " critical_1 " << critical_1 << " critical_2 " << critical_2 << std::endl;
+				res_bak->push_back(critical_1);
+			 }
+			ret = std::find(res_bak->begin(), res_bak->end(), critical_2);
+		       	if (ret == res_bak->end())
+                        {
+                       		res_bak->push_back(critical_2);
+                        }
+
+                    }
                 }
 
-                paramTypes.resize((size_t)config->criticalSize);
 
-                ContractABI abi;
-                isOk = abi.abiOutByFuncSelector(ref(_tx.data()).cropped(4), paramTypes, *res);
-                if (!isOk)
-                {
-                    EXECUTIVECONTEXT_LOG(DEBUG) << LOG_DESC("[getTxCriticals] abiout failed, ")
-                                                << LOG_KV("func signature", config->functionName)
-                                                << LOG_KV("input data", toHex(_tx.data()));
-
-                    return nullptr;
-                }
-
-                for (string& critical : *res)
-                {
-                    critical += _tx.receiveAddress().hex();
-                }
-
-                return res;
+                return res_bak;
             }
         }
     }

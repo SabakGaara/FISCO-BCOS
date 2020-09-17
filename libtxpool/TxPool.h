@@ -116,7 +116,8 @@ public:
     std::pair<h256, Address> submit(dev::eth::Transaction::Ptr _tx) override;
 
     std::pair<h256, Address> submitTransactions(dev::eth::Transaction::Ptr _tx) override;
-
+    
+    bool insert(dev::eth::Transaction::Ptr _tx);
     /**
      * @brief Remove transaction from the queue
      * @param _txHash: Remove bad transaction from the queue
@@ -196,7 +197,7 @@ protected:
      */
     ImportResult import(dev::eth::Transaction::Ptr _tx, IfDropped _ik = IfDropped::Ignore) override;
     /// verify transaction
-    virtual ImportResult verify(Transaction::Ptr trans, IfDropped _ik = IfDropped::Ignore);
+    virtual ImportResult verify(Transaction::Ptr trans);
     /// interface for filter check
     virtual u256 filterCheck(Transaction::Ptr) const { return u256(0); };
     void clear();
@@ -218,7 +219,7 @@ private:
     bool removeTrans(h256 const& _txHash, bool _needTriggerCallback = true,
         std::shared_ptr<dev::eth::Block> _block = nullptr, size_t _index = 0);
 
-    bool insert(dev::eth::Transaction::Ptr _tx);
+   //  bool insert(dev::eth::Transaction::Ptr _tx);
     void removeTransactionKnowBy(h256 const& _txHash);
     bool inline txPoolNonceCheck(dev::eth::Transaction::Ptr const& tx)
     {

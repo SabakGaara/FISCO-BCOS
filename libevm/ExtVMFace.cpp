@@ -193,7 +193,7 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
     // Handle CREATE separately.
     if (_msg->kind == EVMC_CREATE || _msg->kind == EVMC_CREATE2)
         return create(o_result, env, _msg);
-
+//    std::cout << "call here" << "transaction ID" << _msg->m_ID << std::endl;
     CallParameters params;
     params.gas = _msg->gas;
     params.apparentValue = fromEvmC(_msg->value);
@@ -204,6 +204,9 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
     params.data = {_msg->input_data, _msg->input_size};
     params.staticCall = (_msg->flags & EVMC_STATIC) != 0;
     params.onOp = {};
+
+
+    params.m_ID = _msg->m_ID;
 
     *o_result = env.call(params);
 }
@@ -227,7 +230,7 @@ evmc_context_fn_table const fnTable = {
 
 ExtVMFace::ExtVMFace(EnvInfo const& _envInfo, Address const& _myAddress, Address const& _caller,
     Address const& _origin, u256 const& _value, u256 const& _gasPrice, bytesConstRef _data,
-    bytes _code, h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall)
+    bytes _code, h256 const& _codeHash, unsigned _depth, bool _isCreate, bool _staticCall, uint32_t _txID)
   : evmc_context{&fnTable},
     m_envInfo(_envInfo),
     m_myAddress(_myAddress),
@@ -240,7 +243,8 @@ ExtVMFace::ExtVMFace(EnvInfo const& _envInfo, Address const& _myAddress, Address
     m_codeHash(_codeHash),
     m_depth(_depth),
     m_isCreate(_isCreate),
-    m_staticCall(_staticCall)
+    m_staticCall(_staticCall),
+    m_ID(_txID)
 {}
 std::shared_ptr<dev::blockverifier::ExecutiveContext> EnvInfo::precompiledEngine() const
 {
