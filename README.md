@@ -15,7 +15,7 @@ Our group developed two precompiled contracts whose address is `0x1006` and `0x1
 
 ## Concurrency Control
 
-For miner, the execution of atomic sections  in transaction are executed under the protection of HTM, specifically, our group implemented the HTM using the interface from Intel tbb ( `tbb::speculative_spin_mutex`). The mutex is implemented by using the Hardware Lock Elision (HLE) which is  an instruction prefix-based interface  in Intel TSX. 
+For miner, the execution of atomic sections  in transaction are executed under the protection of HTM, specifically, our group implemented the HTM using the interface from Intel tbb ( `tbb::speculative_spin_mutex`). The mutex is implemented by using the Hardware Lock Elision (HLE) which is  an instruction prefix-based interface  in Intel TSX. 
 
 For validator, the concurrency control is based on happen-before graph which ensure that conflict atomic sections will never be executed concurrently.  
 
